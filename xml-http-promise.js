@@ -1,5 +1,6 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
 const SYMBOL_PROPS= Symbol.for( "xml-http-promise:props")
+const ABORT_SIGNAL= typeof AbortSignal!== "undefined"&& AbortSignal
 
 function open(){
 }
@@ -14,13 +15,49 @@ function send(){
 	this.then()
 }
 
+function abort(){
+	if( this.readyState> 1){
+		return
+	}
+	this.readyState= 4
+	this.onabort && this.onabort({ target: this})
+	const props= this[ SYMBOL_PROPS]
+	if( props){
+		// this feels incredibly crude / ugly
+		props.aborted= true
+
+		if( props.signal){
+			// TODO: read-only, so this hack will not work! we'd need to proxy bah
+			props.signal.aborted= true
+			// this should usually work
+			props.signal.onabort && props.signal.onboart.call( this)
+			// this might work
+			props.signal.dispatchEvent && props.signal.dispatchEvent(new Event( "abort"))
+		}
+	}
+
+	// TODO: timeouts and abort do not currently affect resolve or reject at all & this seems unwell
+	// huge downside: we'd always need to instrument!
+}
+
 function makeXhpConstructor( p){
 	return function xhp( ...args){
 		const self= new xhpConstructor( ...args)
+		// TODO: evil (great) thought, we could define 2->3 as floating point indicating progress of computation
 		self.readyState= 0
 		self[ SYMBOL]= p[ SYMBOL]
-		self.open= open
+
+		const signal= ABORT_SIGNAL&& args[0]&& args[0].signal
+		if( signal){
+			// see note in abort(), we are sadly forced to proxy this
+			// really wish we had the AbortController itself so we could actuate it with our own abort() directly
+			self[ SYMBOL_PROPS]= { signal}
+		}
+
 		Object.defineProperties( self, {
+			abort: {
+				value: abort
+			},
 			open: {
 				value: open
 			},
@@ -75,6 +112,7 @@ function _ratchetReadyState( self, to){
 	if( !( old> to)){
 		self.readyState= to
 		if (self.onreadystatechange) {
+			// TODO: after we update state!
 			self.onreadystatechange({ target: self })
 		}
 
@@ -89,12 +127,16 @@ function _ratchetReadyState( self, to){
 }
 
 function _timeout(){
-	if( this.readyState> 1){
+	if( this.readyState>= 4){
 		return
 	}
 
 	this.readyState= 4
 	this.ontimeout && this.ontimeout({ target: this})
+
+	// i dont see xhr doing so but i would prefer exposing this status
+	// and ideally not kind of tucked away, like this
+	this[ SYMBOL_PROPS] && (this[ SYMBOL_PROPS].timedout= true);
 }
 
 
@@ -102,14 +144,17 @@ function _timeout(){
 * A handler for resolve or reject
 */
 function xhpHandler( val){
-	this.self[ this.field]= val
-	this.self.status= this.status
-	_ratchetReadyState( this.self, 4)
-	const got= this.handler&& this.handler.call( null, val)
-	if( got&& this.throw){
-		throw got;
+	if( _ratchetReadyState( this.self, 4)){
+		if( this.field) {
+			this.self[ this.field]= val
+			this.self.status= this.status
+		}
+		const got= this.handler&& this.handler.call( null, val)
+		if( got&& this.throw){
+			throw got;
+		}
+		return got
 	}
-	return got
 }
 
 /**
