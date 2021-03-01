@@ -1,4 +1,5 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
+const SYMBOL_PROPS= Symbol.for( "xml-http-promise:props")
 
 /**
 * Tell the promise that someone wants a response
@@ -13,6 +14,46 @@ function makeXhpConstructor( p){
 		self.readyState= 0
 		self[ SYMBOL]= p[ SYMBOL]
 		self.open= open
+		Object.defineProperties( self, {
+			open: {
+				value: open
+			},
+			timeout: {
+				set: function( val){
+
+					const props= this[ SYMBOL_PROPS]|| (this[ SYMBOL_PROPS]= {})
+					props.timeout= val
+
+					// if we're not running, don't try to set up timeout machinery
+					if ( !(this.readyState > 0)) {
+						return
+					}
+
+					if( props.timeoutHandle){
+						clearTimeout( props.timeoutHandle)
+					}
+
+					// so we can adjust timeout. note that run time when no timeout is set is never counted
+					if( !props.start){
+						props.start= Date.now()
+					}else{
+						// adjust timeout by whatever time has passed
+						timeout= props.start - Date.now() + timeout
+						if( timeout< 0){
+							// has already tripped
+							_timeout.call( this)
+							return	
+						}
+					}
+					props.timeoutHandle= setTimeout( _timeout.bind( this), timeout)
+					
+				},
+				get: function(){
+					const props= this[ SYMBOL_PROPS]|| (this[ SYMBOL_PROPS]= {})
+					return props.timeout
+				}
+			}
+		})
 		return self
 	}
 }
@@ -21,14 +62,30 @@ function makeXhpConstructor( p){
 * Advance `readyState` to a specified `to` if not there yet
 */
 function _ratchetReadyState( self, to){
-	if( !self.readyState> to){
+	const old= self.readyState
+	if( !( old> to)){
 		self.readyState= to
 		if (self.onreadystatechange) {
 			self.onreadystatechange({ target: self })
 		}
+
+		if( old){
+			return true
+		}
+
+		this.timeout= this.timeout
 		return true
 	}
 	return false
+}
+
+function _timeout(){
+	if( this.readyState> 1){
+		return
+	}
+
+	this.readyState= 4
+	this.ontimeout && this.ontimeout({ target: this})
 }
 
 
@@ -39,7 +96,7 @@ function xhpHandler( val){
 	this.self[ this.field]= val
 	this.self.status= this.status
 	_ratchetReadyState( this.self, 4)
-	const got= this.handler&& this.handler( val)
+	const got= this.handler&& this.handler.call( null, val)
 	if( got&& this.throw){
 		throw got;
 	}

@@ -10,6 +10,7 @@ As it turns out, it has a number of really nice capabilities:
    i. the onreadystatechange handler gets a reference to the xhr object.
 2. `response` is synchronously available on the xhr object.
 3. `status` says whether the xhr suceeded.
+4. `timeout` behavior provided
 
 All in all, this is a much more information-rich environment than EcmaScript Promises. This library
 is a prototype set of instrumentation that takes a Promise-class like Fetch & enhances the fetch
