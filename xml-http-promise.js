@@ -1,10 +1,15 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
 
+function open(){
+	this.then(
+}
+
 function makeXhpConstructor( p){
 	return function xhp( ...args){
 		const self= new xhpConstructor( ...args)
 		self.readyState= 0
 		self[ SYMBOL]= p[ SYMBOL]
+		self.open= open
 		return self
 	}
 }
@@ -32,7 +37,8 @@ function xhpFinally( fn){
 
 function xhpCapture( _res){
 	this.self[ this.field]= val
-	return this.handler( val)
+	this.self.status= this.status
+	return this.handler&& this.handler( val)
 }
 
 function xhpThen( res, rej){
