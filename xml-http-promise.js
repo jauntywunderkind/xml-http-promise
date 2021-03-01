@@ -46,8 +46,11 @@ function xhpHandler( val){
 	return got
 }
 
+/**
+* The first time someone asks the promise to resolve, we sweep in and build some
+* intercepting handlers that monitor the promise's execution
+*/
 function _instrument( self, res, rej){
-	// if it's the first time, capture res & rej
 	res= xhpCapture.bind({ self, field: "response", handler: res, status: 200 })
 	rej= xhpCapture.bind({ self, field: "responseError", handler: rej, status: 400, throw: true })
 	return self[ SYMBOL].then( res, rej)
@@ -62,7 +65,7 @@ function xhpCatch( rej){
 
 function xhpFinally( fn){
 	if( _ratchetReadyState( this, 1)){
-		return _instrument( this)
+		_instrument( this)
 	}
 	return this[ SYMBOL].finally( fn)
 }
@@ -74,6 +77,9 @@ function xhpThen( res, rej){
 	return this[ SYMBOL].then( res, rej)
 }
 
+/**
+* Take a constructor & yield a wrapped constructor that exhibits XHP/XHR-alike behaviors
+*/
 function wrap( p){
 	p[ SYMBOL]= {
 		catch: p.catch,
