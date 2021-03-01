@@ -1,0 +1,18 @@
+{
+	"name": "xml-http-promise",
+	"version": "1.0.0",
+	"description": "Instrumentation retrofitting an XMLHttpRequest like interface on Promises",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://archive.voodoowarez.com/xml-http-promise"
+	},
+	"keywords": [],
+	"author": "jauntywunderkind",
+	"license": "MIT",
+	"module": "xml-http-promise.js",
+	"esm": true
+}
