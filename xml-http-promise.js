@@ -1,7 +1,10 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
 
+/**
+* Tell the promise that someone wants a response
+*/
 function open(){
-	this.then(
+	this.then()
 }
 
 function makeXhpConstructor( p){
@@ -14,38 +17,59 @@ function makeXhpConstructor( p){
 	}
 }
 
+/**
+* Advance `readyState` to a specified `to` if not there yet
+*/
 function _ratchetReadyState( self, to){
 	if( !self.readyState> to){
 		self.readyState= to
+		if (self.onreadystatechange) {
+			self.onreadystatechange({ target: self })
+		}
 		return true
 	}
 	return false
 }
 
+
+/**
+* A handler for resolve or reject
+*/
+function xhpHandler( val){
+	this.self[ this.field]= val
+	this.self.status= this.status
+	_ratchetReadyState( this.self, 4)
+	const got= this.handler&& this.handler( val)
+	if( got&& this.throw){
+		throw got;
+	}
+	return got
+}
+
+function _instrument( self, res, rej){
+	// if it's the first time, capture res & rej
+	res= xhpCapture.bind({ self, field: "response", handler: res, status: 200 })
+	rej= xhpCapture.bind({ self, field: "responseError", handler: rej, status: 400, throw: true })
+	return self[ SYMBOL].then( res, rej)
+}
+
 function xhpCatch( rej){
-	if (_ratchetReadyState( this, 2)){
+	if (_ratchetReadyState( this, 1)){
+		return _instrument( this, null, rej)
 	}
 	return this[ SYMBOL].catch( rej)
 }
 
 function xhpFinally( fn){
-	if( _ratchetReadyState( this, 2)){
+	if( _ratchetReadyState( this, 1)){
+		return _instrument( this)
 	}
 	return this[ SYMBOL].finally( fn)
 }
 
-
-function xhpCapture( _res){
-	this.self[ this.field]= val
-	this.self.status= this.status
-	return this.handler&& this.handler( val)
-}
-
 function xhpThen( res, rej){
-	if( _ratchetReadyState( this, 2)){
-		// if it's the first time, capture res & rej
-		res= xhpCapture.bind({ self: this, field: "response", handler: res, status: 200 })
-		rej= xhpCapture.bind({ self: this, field: "responseError", handler: rej, status: 400 })
+	if( _ratchetReadyState( this, 1)){
+		return _instrument( this, res, rej);
 	}
 	return this[ SYMBOL].then( res, rej)
 }
