@@ -1,10 +1,16 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
 const SYMBOL_PROPS= Symbol.for( "xml-http-promise:props")
 
+function open(){
+}
+
 /**
 * Tell the promise that someone wants a response
 */
-function open(){
+function send(){
+	if( this.readyState> 0){
+		return
+	}
 	this.then()
 }
 
@@ -17,6 +23,9 @@ function makeXhpConstructor( p){
 		Object.defineProperties( self, {
 			open: {
 				value: open
+			},
+			send: {
+				value: send
 			},
 			timeout: {
 				set: function( val){
