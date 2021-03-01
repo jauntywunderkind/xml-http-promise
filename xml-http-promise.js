@@ -1,15 +1,16 @@
 const SYMBOL= Symbol.for( "xml-http-promise")
 
-function xhpConstructor( ..args){
-	const self= new xhpConstructor( ...args)
-	self.readyState= 0
-	return self
+function makeXhpConstructor( p){
+	return function xhp( ...args){
+		const self= new xhpConstructor( ...args)
+		self.readyState= 0
+		self[ SYMBOL]= p[ SYMBOL]
+		return self
+	}
 }
 
 function _ratchetReadyState( self, to){
-	if( !self.readyState){
-		self.readyState= to
-	} else if( self.readyState< to){
+	if( !self.readyState> to){
 		self.readyState= to
 	}
 }
@@ -38,5 +39,5 @@ function wrap( p){
 	p.catch= xhpCatch.bind( p)
 	p.finally= xhpFinally.bind( p)
 	p.then= xhpFinally.bind( p)
-	return p
+	return makeXhpConstructor( p)
 }
