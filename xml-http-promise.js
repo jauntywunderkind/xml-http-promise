@@ -80,8 +80,8 @@ function wrap( p){
 		finally: p.finally,
 		then: p.then
 	}
-	p.catch= xhpCatch.bind( p)
-	p.finally= xhpFinally.bind( p)
-	p.then= xhpFinally.bind( p)
+	p.catch= xhpCatch
+	p.finally= xhpFinally
+	p.then= xhpFinally
 	return makeXhpConstructor( p)
 }
